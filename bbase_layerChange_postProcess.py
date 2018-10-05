@@ -30,9 +30,10 @@ parser.add_argument(
     default=os.getcwd(),
     help="Define output directory. Default is current directory.",)
 parser.add_argument(
-    "-n", "--no_hop",
-    action="store_true",
-    help="Change layers before traveling to start of layer. Default is False, the printer will hop.",)
+    "-z", "--zhop",
+    type=int,
+    default=10,
+    help="Change layers before traveling to start of layer. Enter 0 to disable z-hopping. Default is 10mm.",)
 parser.add_argument(
     "prime_amount",
     type=float,
@@ -64,22 +65,22 @@ for layerPos in layerPos_generator:
     next_Z_pos = 1
     prime_count_pos = 1
 
-    # Find latest non-extrusion move after a extrusion and just before a layer change
-    while(file[layerPos + back_count][:2] != "G1"):
-        back_count-=1
+    if (args.zhop > 0):
+        # Find latest non-extrusion move after a extrusion and just before a layer change
+        while(file[layerPos + back_count][:2] != "G1"):
+            back_count-=1
 
-    # Find Z height
-    while(file[layerPos + next_Z_pos].find(" Z") == -1):
-        next_Z_pos+=1
+        # Find Z height
+        while(file[layerPos + next_Z_pos].find(" Z") == -1):
+            next_Z_pos+=1
 
-    # Modify movement command to move up Z too
-    zHeightString = file[layerPos + next_Z_pos]
-    original_g0_string = file[layerPos + back_count + 1][:-2]
-    original_g0_string += " " + zHeightString[zHeightString.find("Z"):]
+        # Modify movement command to move up Z too
+        zHeight = int(file[layerPos + next_Z_pos][file[layerPos + next_Z_pos].find("Z")+1:-1])
+        original_g0_string = file[layerPos + back_count + 1][:-2]
+        original_g0_string += " Z" + str(zHeight + args.zhop) + "\n"
 
-    # Save new movement command
-    file[layerPos + back_count + 1] = original_g0_string
-
+        # Save new movement command
+        file[layerPos + back_count + 1] = original_g0_string
 
 #TODO Add Priming
     # Start right after ";LAYER:X"
