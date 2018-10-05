@@ -86,9 +86,9 @@ for layerPos in layerPos_generator:
     # Start right after ";LAYER:X"
     # Find all "G1" and add prime_amount.
     # Stop at "G92 E0\r\n"
-    prime_line = file[layerPos + prime_count_pos]
-    while(prime_line[:3] != "G92"):
-        if(prime_line.find("G1") >= 0 and prime_line.find(" E") >= 0):
+    prime_line = file[layerPos + prime_count_pos] # Get the line as a string
+    while(prime_line[:4] != "G92 "): # Stop when you find the extrusion reset command
+        if(prime_line.find("G1") >= 0 and prime_line.find("E") >= 0):
             extrusion = float(prime_line[prime_line.find("E")+1:-1]) + args.prime_amount
             file[layerPos + prime_count_pos] = (prime_line[0:prime_line.find("E")+1] +
                 str(extrusion) + "\n")
