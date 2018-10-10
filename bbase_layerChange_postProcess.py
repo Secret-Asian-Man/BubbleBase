@@ -49,6 +49,9 @@ for line in raw_file:
     file.append(line)
 
 # Check Exceptions
+
+ #TODO Check if filetype is correct
+
 if(file[0][:14] != ";FLAVOR:Marlin"): # Note: Windows OS uses "\r\n" as an End of Line
     raise Exception("Invalid file. Must be Marlin flavor gcode.")
 
@@ -63,7 +66,6 @@ next(layerPos_generator) # Skip layer 0
 for layerPos in layerPos_generator:
     back_count = -1
     next_Z_pos = 1
-    prime_count_pos = 1
 
     if (args.zhop > 0):
         # Find latest non-extrusion move after a extrusion and just before a layer change
@@ -82,23 +84,45 @@ for layerPos in layerPos_generator:
         # Save new movement command
         file[layerPos + back_count + 1] = original_g0_string
 
-#TODO Add Priming
-    # Start right after ";LAYER:X"
-    # Find all "G1" and add prime_amount.
-    # Stop at "G92 E0\r\n"
-    prime_line = file[layerPos + prime_count_pos] # Get the line as a string
-    while(prime_line[:4] != "G92 "): # Stop when you find the extrusion reset command
-        if(prime_line.find("G1") >= 0 and prime_line.find("E") >= 0):
-            extrusion = float(prime_line[prime_line.find("E")+1:-1]) + args.prime_amount
-            file[layerPos + prime_count_pos] = (prime_line[0:prime_line.find("E")+1] +
+    prime_count_pos = 1
+    line = file[layerPos + prime_count_pos] # Get the line as a string
+
+    if(line[:3] != "G0 "):
+        raise Exception("Did you just assume the next line is G0? This crappy code is too brute force. Redo it.")
+    else:
+
+        # Find previous extrusion
+        while(not(file[layerPos + prime_count_pos][:2] == "G1" and
+                file[layerPos + prime_count_pos].find(" E") >= 0)):
+            prime_count_pos-=1
+
+        # Add extra extrusion and save the previous extrusion as a float
+        extrusion = (float(file[layerPos + prime_count_pos][file[layerPos + prime_count_pos].find("E")+1:-1]) + args.prime_amount)
+
+        # Add Extrusion to the line just after the new layer
+        line = (line[:-1] + " E" + str(extrusion) + "\n")
+
+        # Change G0 to G1
+        prime_line = list(line)
+        prime_line[1] = "1"
+        line = "".join(prime_line)
+        file[layerPos + 1] = line
+
+        prime_count_pos = 2 # set to after the prime line
+        line = file[layerPos + prime_count_pos]
+
+    # Update extrusion on rest of Gcode
+    while(line[:4] != "G92 "): # Stop when you find the extrusion reset command
+        if(line.find("G1") >= 0 and line.find("E") >= 0):
+            extrusion = float(line[line.find("E")+1:-1]) + args.prime_amount
+            file[layerPos + prime_count_pos] = (line[0:line.find("E")+1] +
                 str(extrusion) + "\n")
         prime_count_pos+=1;
-        prime_line = file[layerPos + prime_count_pos]
+        line = file[layerPos + prime_count_pos]
 
 # Mark the file as modified
 file.insert(1,";Modified by Bbase postproccessor\n")
 
 # Save the data
-#print((args.output_directory + args.output_file_name))
 write_file = open((args.output_directory + "/" + args.output_file_name),"w")
 write_file.write("".join(file))
