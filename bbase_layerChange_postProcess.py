@@ -49,14 +49,14 @@ for line in raw_file:
     file.append(line)
 
 # Check Exceptions
-
- #TODO Check if filetype is correct
-
 if(file[0][:14] != ";FLAVOR:Marlin"): # Note: Windows OS uses "\r\n" as an End of Line
     raise Exception("Invalid file. Must be Marlin flavor gcode.")
 
 if(file[1][:33] == ";Modified by Bbase postproccessor"):
     raise Exception("This file has already been previously modified by the Bbase postproccessor")
+	
+if(args.prime_amount > 400):
+	raise Exception("Prime amount must be 400 or less.");
 
 # Process the data
 layerPos_generator = getNextLayerPos(file)
@@ -78,7 +78,7 @@ for layerPos in layerPos_generator:
 
         # Modify movement command to move up Z too
         zHeight = int(file[layerPos + next_Z_pos][file[layerPos + next_Z_pos].find("Z")+1:-1])
-        original_g0_string = file[layerPos + back_count + 1][:-2]
+        original_g0_string = file[layerPos + back_count + 1][:-1] #:	-2
         original_g0_string += " Z" + str(zHeight + args.zhop) + "\n"
 
         # Save new movement command
